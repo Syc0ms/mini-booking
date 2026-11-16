@@ -1,0 +1,84 @@
+:root {
+  --page-bg: #f6f4f0;
+  --panel-bg: #ffffff;
+  --text: #24221f;
+  --text-muted: #6a645b;
+  --divider: #e6e1d9;
+  --accent: #3e5c87;
+  --accent-soft: #e8eef6;
+
+  --status-free: #2f6f4f;
+  --status-booked: #8a5a14;
+  --status-past: #8a847a;
+
+  /* One spacing scale for the whole page. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius: 8px;
+
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--page-bg);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+/* Times and day numbers line up when digits are equally wide. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Headings that receive focus programmatically do not need a ring. */
+[tabindex='-1']:focus {
+  outline: none;
+}
