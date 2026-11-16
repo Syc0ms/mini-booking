@@ -2,14 +2,25 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Slot;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreBookingRequest extends FormRequest
 {
+    private ?Slot $slot = null;
+
     public function rules(): array
     {
         return [
-            'slot_id' => ['required', 'integer', 'exists:slots,id'],
+            // Loads the slot while checking that it exists, so the controller
+            // does not query it a second time.
+            'slot_id' => ['bail', 'required', 'integer', function (string $attribute, mixed $value, Closure $fail): void {
+                $this->slot = Slot::query()->find((int) $value);
+                if ($this->slot === null) {
+                    $fail('Такого слота нет в расписании');
+                }
+            }],
             'customer_name' => ['required', 'string', 'max:100'],
             'customer_email' => ['required', 'string', 'email', 'max:255'],
         ];
@@ -18,17 +29,22 @@ class StoreBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'slot_id.required' => 'Не выбран слот.',
-            'slot_id.integer' => 'Некорректный идентификатор слота.',
-            'slot_id.exists' => 'Такого слота нет в расписании.',
-            'customer_name.required' => 'Укажите имя.',
-            'customer_name.string' => 'Имя должно быть строкой.',
-            'customer_name.max' => 'Имя не длиннее :max символов.',
-            'customer_email.required' => 'Укажите email.',
-            'customer_email.string' => 'Email должен быть строкой.',
-            'customer_email.email' => 'Проверьте формат email.',
-            'customer_email.max' => 'Email не длиннее :max символов.',
+            'slot_id.required' => 'Не выбран слот',
+            'slot_id.integer' => 'Некорректный идентификатор слота',
+            'customer_name.required' => 'Укажите имя',
+            'customer_name.string' => 'Имя должно быть строкой',
+            'customer_name.max' => 'Имя не длиннее :max символов',
+            'customer_email.required' => 'Укажите email',
+            'customer_email.string' => 'Email должен быть строкой',
+            'customer_email.email' => 'Проверьте формат email',
+            'customer_email.max' => 'Email не длиннее :max символов',
         ];
+    }
+
+    /** The slot found during validation; only called after validation passed. */
+    public function slot(): Slot
+    {
+        return $this->slot;
     }
 
     protected function prepareForValidation(): void

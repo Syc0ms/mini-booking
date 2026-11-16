@@ -6,7 +6,7 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import type { BookingInput, FieldErrors, Slot } from '../api/bookingApi'
 import type { BookResult } from '../composables/useBookingActions'
-import { formatDateLong, formatTimeRange } from '../utils/datetime'
+import { formatSlotLabel } from '../utils/slot'
 
 const props = defineProps<{
   slot: Slot | null
@@ -21,7 +21,9 @@ const emit = defineEmits<{
   booked: [slot: Slot, scheduleRefreshed: boolean]
 }>()
 
-// The draft survives errors and reopening the dialog for another slot.
+// The draft survives errors, retries and closing the dialog without booking.
+// It is cleared after a successful booking, so on a shared office computer the
+// next person does not find someone else's name and email in the form.
 const form = reactive({ name: '', email: '' })
 const fieldErrors = ref<FieldErrors>({})
 const notice = ref<{ severity: 'error' | 'warn'; text: string } | null>(null)
@@ -30,13 +32,7 @@ const isBlocked = ref(false)
 const isSubmitting = ref(false)
 const hasFailedOnce = ref(false)
 
-const slotLabel = computed(() => {
-  if (props.slot === null) {
-    return ''
-  }
-  const time = formatTimeRange(props.slot.starts_at, props.slot.ends_at, props.timezone)
-  return `${formatDateLong(props.slot.date)}, ${time}`
-})
+const slotLabel = computed(() => (props.slot === null ? '' : formatSlotLabel(props.slot, props.timezone)))
 
 watch(visible, (isOpen) => {
   if (isOpen) {
@@ -47,17 +43,19 @@ watch(visible, (isOpen) => {
   }
 })
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Only the basic shape; the server's RFC check is the real one (and allows
+// addresses without a dot in the domain, such as ivan@localhost).
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+$/
 
 function validateInBrowser(): FieldErrors {
   const errors: FieldErrors = {}
   if (form.name.trim() === '') {
-    errors.customer_name = 'Укажите имя.'
+    errors.customer_name = 'Укажите имя'
   }
   if (form.email.trim() === '') {
-    errors.customer_email = 'Укажите email.'
+    errors.customer_email = 'Укажите email'
   } else if (!EMAIL_PATTERN.test(form.email.trim())) {
-    errors.customer_email = 'Проверьте формат email.'
+    errors.customer_email = 'Проверьте формат email'
   }
   return errors
 }
@@ -94,6 +92,7 @@ async function submit(): Promise<void> {
 
 function handleResult(result: BookResult, slot: Slot): void {
   if (result.outcome === 'booked') {
+    clearDraft()
     visible.value = false
     emit('booked', slot, result.scheduleRefreshed)
     return
@@ -122,8 +121,20 @@ function handleResult(result: BookResult, slot: Slot): void {
   }
 
   hasFailedOnce.value = true
-  notice.value = { severity: 'error', text: result.message }
   isBlocked.value = !result.canRetry
+  if (result.canRetry) {
+    notice.value = { severity: 'error', text: result.message }
+  } else {
+    // The lost request may have created the booking, so treat the draft as
+    // after a success; the message says to check the schedule.
+    notice.value = { severity: 'warn', text: result.message }
+    clearDraft()
+  }
+}
+
+function clearDraft(): void {
+  form.name = ''
+  form.email = ''
 }
 </script>
 
@@ -140,7 +151,10 @@ function handleResult(result: BookResult, slot: Slot): void {
     @after-hide="emit('after-hide')"
   >
     <form novalidate class="booking-form" @submit.prevent="submit">
-      <p class="booking-form__slot tabular">{{ slotLabel }}</p>
+      <p class="booking-form__slot tabular">
+        <span class="status-mark status-mark--free" aria-hidden="true"></span>
+        <span class="booking-form__slot-text">{{ slotLabel }}</span>
+      </p>
 
       <div class="field">
         <label for="booking-name">Имя</label>
@@ -210,12 +224,10 @@ function handleResult(result: BookResult, slot: Slot): void {
 }
 
 .booking-form__slot {
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.booking-form__slot::first-letter {
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
 }
 
 .field {
@@ -229,15 +241,20 @@ function handleResult(result: BookResult, slot: Slot): void {
   font-weight: 500;
 }
 
+/* Kept in the DOM for aria-describedby, takes no space until it has text. */
 .field__error {
-  min-height: 1.25em;
   font-size: 13px;
-  color: #b3261e;
+  color: var(--danger);
+}
+
+.field__error:empty {
+  display: none;
 }
 
 .booking-form__actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 </style>

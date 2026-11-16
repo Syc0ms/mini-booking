@@ -53,11 +53,26 @@ export function useSchedule() {
     return slots.value.find((slot) => slot.id === slotId)
   }
 
+  // Loads can overlap (a manual refresh and the reload after a booking).
+  // Only the most recent one may write state; an older one that finishes
+  // later resolves with the newer one's result instead of overwriting it.
+  let latestLoadId = 0
+  let latestLoad: Promise<boolean> = Promise.resolve(true)
+
   /** Loads the full schedule. Resolves to false instead of throwing. */
-  async function load(): Promise<boolean> {
+  function load(): Promise<boolean> {
+    latestLoadId += 1
+    latestLoad = fetchAndApply(latestLoadId)
+    return latestLoad
+  }
+
+  async function fetchAndApply(loadId: number): Promise<boolean> {
     isLoading.value = true
     try {
       const response = await fetchSlots()
+      if (loadId !== latestLoadId) {
+        return latestLoad
+      }
       slots.value = response.data
       meta.value = response.meta
       loadError.value = null
@@ -65,10 +80,15 @@ export function useSchedule() {
       keepSelectedDateValid()
       return true
     } catch (error) {
+      if (loadId !== latestLoadId) {
+        return latestLoad
+      }
       loadError.value = error instanceof ApiError ? error.message : 'Не удалось загрузить расписание.'
       return false
     } finally {
-      isLoading.value = false
+      if (loadId === latestLoadId) {
+        isLoading.value = false
+      }
     }
   }
 

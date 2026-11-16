@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\UtcDateTime;
 use App\Enums\SlotStatus;
+use App\Models\Concerns\HasUtcTimestamps;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Slot extends Model
 {
+    use HasUtcTimestamps;
+
     protected $fillable = ['starts_at', 'ends_at'];
 
     protected function casts(): array

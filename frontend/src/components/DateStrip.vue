@@ -48,7 +48,7 @@ const otherSelection = computed({
         option-label="fullLabel"
         :allow-empty="false"
         aria-label="Дата"
-        class="date-strip"
+        class="segmented date-strip"
       >
         <template #option="{ option }">
           <span class="date-chip" aria-hidden="true">
@@ -81,14 +81,12 @@ const otherSelection = computed({
   flex-wrap: wrap;
 }
 
-/* On narrow screens only the strip scrolls, never the page. */
+/* On narrow screens only the strip scrolls, never the page. The strip's own
+   4px padding leaves room for the focus ring of the first and last chip. */
 .date-strip-scroller {
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
-  /* Room for the focus ring of the first and last chip. */
-  padding: 3px;
-  margin: -3px;
 }
 
 .date-strip-scroller::-webkit-scrollbar {
@@ -96,61 +94,39 @@ const otherSelection = computed({
 }
 
 .date-strip {
-  display: inline-flex;
   flex-wrap: nowrap;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  background: var(--panel-bg);
-  border: 1px solid var(--divider);
-  border-radius: var(--radius);
 }
 
+/* Every chip the same width, "сегодня" included. */
 .date-strip :deep(.p-togglebutton) {
   flex: 0 0 auto;
-  min-width: 64px;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text);
-}
-
-.date-strip :deep(.p-togglebutton:not(.p-togglebutton-checked):hover) {
-  background: #f3f0eb;
-}
-
-.date-strip :deep(.p-togglebutton-checked) {
-  background: var(--accent);
-  color: #ffffff;
-}
-
-/* Aura draws a white "pill" inside the checked toggle; we color the button itself. */
-.date-strip :deep(.p-togglebutton-content) {
-  padding: 0;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: inherit;
+  width: 72px;
+  padding: var(--space-2) 0;
 }
 
 .date-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .date-chip__weekday {
   font-size: 12px;
-  font-weight: 500;
-  opacity: 0.75;
+  font-weight: 400;
 }
 
 .date-chip__day {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.date-strip :deep(.p-togglebutton-checked) .date-chip__day {
+  color: inherit;
 }
 
 .other-dates {
-  min-width: 190px;
+  min-width: 192px;
 }
 </style>

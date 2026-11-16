@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBookingRequest;
 use App\Models\Booking;
-use App\Models\Slot;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +17,7 @@ class BookingController extends Controller
      */
     public function store(StoreBookingRequest $request): JsonResponse
     {
-        $slot = Slot::query()->findOrFail($request->integer('slot_id'));
+        $slot = $request->slot();
 
         if ($slot->hasStarted(CarbonImmutable::now())) {
             return $this->conflict('slot_past', 'Этот слот уже начался, его нельзя забронировать.');
@@ -50,9 +49,12 @@ class BookingController extends Controller
      * cancel finds nothing and returns 404. No ownership check: in this demo
      * anyone who knows the booking ID may cancel it.
      */
-    public function destroy(int $id): Response|JsonResponse
+    public function destroy(string $id): Response|JsonResponse
     {
-        $booking = Booking::query()->find($id);
+        // The route only allows digits, but an ID above PHP_INT_MAX does not
+        // fit an int: filter_var returns false for it, and that is a 404 too.
+        $bookingId = filter_var($id, FILTER_VALIDATE_INT);
+        $booking = $bookingId === false ? null : Booking::query()->find($bookingId);
 
         if ($booking === null) {
             return response()->json(

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
-import type { Slot, SlotStatus } from '../api/bookingApi'
+import type { Slot } from '../api/bookingApi'
 import { formatTimeRange } from '../utils/datetime'
+import { STATUS_LABELS } from '../utils/slot'
 
 defineProps<{
   slots: Slot[]
@@ -12,12 +13,6 @@ const emit = defineEmits<{
   book: [slot: Slot]
   cancel: [slot: Slot]
 }>()
-
-const STATUS_LABELS: Record<SlotStatus, string> = {
-  free: 'Свободно',
-  booked: 'Занято',
-  past: 'Прошло',
-}
 </script>
 
 <template>
@@ -26,16 +21,19 @@ const STATUS_LABELS: Record<SlotStatus, string> = {
       <span class="slot-row__time tabular">{{ formatTimeRange(slot.starts_at, slot.ends_at, timezone) }}</span>
 
       <span class="slot-row__status">
-        <span class="status-mark" aria-hidden="true"></span>
+        <span class="status-mark" :class="`status-mark--${slot.status}`" aria-hidden="true"></span>
         {{ STATUS_LABELS[slot.status] }}
       </span>
 
       <span class="slot-row__action">
+        <!-- Outlined, not filled: nine filled buttons per day would drown
+             the one filled action on the screen, the dialog's submit. -->
         <Button
           v-if="slot.status === 'free'"
           label="Забронировать"
           :aria-label="`Забронировать ${formatTimeRange(slot.starts_at, slot.ends_at, timezone)}`"
           size="small"
+          variant="outlined"
           @click="emit('book', slot)"
         />
         <Button
@@ -57,17 +55,18 @@ const STATUS_LABELS: Record<SlotStatus, string> = {
   list-style: none;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   background: var(--panel-bg);
   border: 1px solid var(--divider);
-  border-radius: var(--radius);
+  border-radius: var(--radius-panel);
 }
 
 .slot-row {
   display: grid;
-  grid-template-columns: 9rem 1fr auto;
+  grid-template-columns: 144px 1fr auto;
   align-items: center;
   gap: var(--space-4);
-  min-height: 60px;
+  min-height: 56px;
   padding: var(--space-2) var(--space-5);
 }
 
@@ -85,55 +84,39 @@ const STATUS_LABELS: Record<SlotStatus, string> = {
   align-items: center;
   gap: var(--space-2);
   font-size: 14px;
-  font-weight: 500;
-}
-
-/* Shape differs per status as well as color: ring, filled dot, dash. */
-.status-mark {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.slot-row--free .slot-row__status {
-  color: var(--status-free);
-}
-
-.slot-row--free .status-mark {
-  border: 2px solid currentColor;
+  color: var(--text-secondary);
 }
 
 .slot-row--booked {
-  background: #fbf7ef;
+  background: var(--booked-row);
 }
 
 .slot-row--booked .slot-row__status {
-  color: var(--status-booked);
-}
-
-.slot-row--booked .status-mark {
-  background: currentColor;
+  color: var(--booked-ink);
+  font-weight: 500;
 }
 
 .slot-row--past {
-  color: var(--status-past);
+  background: var(--past-fill);
 }
 
-.slot-row--past .status-mark {
-  height: 2px;
-  border-radius: 1px;
-  background: currentColor;
+.slot-row--past .slot-row__time,
+.slot-row--past .slot-row__status {
+  color: var(--text-muted);
+}
+
+.slot-row--past .slot-row__time {
+  font-weight: 400;
 }
 
 .slot-row__action {
   display: flex;
   justify-content: flex-end;
-  min-width: 140px;
+  min-width: 136px;
 }
 
 .slot-row__action :deep(.p-button) {
-  min-width: 140px;
+  min-width: 136px;
 }
 
 @media (max-width: 560px) {
@@ -142,7 +125,7 @@ const STATUS_LABELS: Record<SlotStatus, string> = {
     grid-template-areas:
       'time action'
       'status action';
-    row-gap: 2px;
+    row-gap: var(--space-1);
     column-gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
   }

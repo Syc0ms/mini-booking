@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import SelectButton from 'primevue/selectbutton'
 import Skeleton from 'primevue/skeleton'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
@@ -10,15 +11,18 @@ import BookingDialog from './components/BookingDialog.vue'
 import CancelDialog from './components/CancelDialog.vue'
 import DateStrip from './components/DateStrip.vue'
 import SlotList from './components/SlotList.vue'
+import WeekGrid from './components/WeekGrid.vue'
 import { useBookingActions, type CancelResult } from './composables/useBookingActions'
 import { useSchedule } from './composables/useSchedule'
-import { describeTimezone, formatDateLong, formatTimeRange } from './utils/datetime'
+import { describeTimezone, formatDateLong, formatDateRange } from './utils/datetime'
+import { formatSlotLabel } from './utils/slot'
 
 const schedule = useSchedule()
 const actions = useBookingActions(schedule)
 const toast = useToast()
 
 const {
+  slots,
   meta,
   timezone,
   selectedDate,
@@ -35,8 +39,29 @@ const isBookingOpen = ref(false)
 const cancelSlot = ref<Slot | null>(null)
 const isCancelOpen = ref(false)
 
+type ScheduleView = 'list' | 'calendar'
+
+const VIEW_OPTIONS: { label: string; value: ScheduleView }[] = [
+  { label: 'Список', value: 'list' },
+  { label: 'Календарь', value: 'calendar' },
+]
+
+// The day list is the main view; the week grid is an alternative layout of
+// the same data, with the same dialogs.
+const view = ref<ScheduleView>('list')
+
 const timezoneLabel = computed(() => describeTimezone(timezone.value))
-const selectedDateLabel = computed(() => (selectedDate.value ? formatDateLong(selectedDate.value) : ''))
+
+const headingLabel = computed(() => {
+  if (view.value === 'calendar') {
+    const days = stripDates.value
+    if (days.length === 0) {
+      return 'Неделя'
+    }
+    return `Неделя: ${formatDateRange(days[0], days[days.length - 1])}`
+  }
+  return selectedDate.value ? formatDateLong(selectedDate.value) : ''
+})
 
 onMounted(() => {
   void schedule.load()
@@ -71,10 +96,12 @@ function openCancel(slot: Slot): void {
   isCancelOpen.value = true
 }
 
-function describeSlot(slot: Slot): string {
-  const date = formatDateLong(slot.date)
-  const capitalizedDate = date.charAt(0).toUpperCase() + date.slice(1)
-  return `${capitalizedDate}, ${formatTimeRange(slot.starts_at, slot.ends_at, timezone.value)}`
+// Clicking a day in the week grid opens that day as a list.
+async function openDayInList(date: string): Promise<void> {
+  selectedDate.value = date
+  view.value = 'list'
+  await nextTick()
+  document.getElementById('schedule-heading')?.focus()
 }
 
 function warnScheduleNotRefreshed(): void {
@@ -87,7 +114,7 @@ function warnScheduleNotRefreshed(): void {
 }
 
 function onBooked(slot: Slot, scheduleRefreshed: boolean): void {
-  toast.add({ severity: 'success', summary: 'Забронировано', detail: describeSlot(slot), life: 4000 })
+  toast.add({ severity: 'success', summary: 'Забронировано', detail: formatSlotLabel(slot, timezone.value), life: 4000 })
   if (!scheduleRefreshed) {
     warnScheduleNotRefreshed()
   }
@@ -104,7 +131,7 @@ function onCancelled(slot: Slot, result: CancelResult): void {
     return
   }
 
-  toast.add({ severity: 'success', summary: 'Бронирование отменено', detail: describeSlot(slot), life: 4000 })
+  toast.add({ severity: 'success', summary: 'Бронирование отменено', detail: formatSlotLabel(slot, timezone.value), life: 4000 })
   if (result.outcome === 'cancelled' && !result.scheduleRefreshed) {
     warnScheduleNotRefreshed()
   }
@@ -116,16 +143,27 @@ function onCancelled(slot: Slot, result: CancelResult): void {
 
   <main class="page">
     <header class="page-header">
-      <h1>Переговорная</h1>
-      <p class="page-header__subtitle">Бронирование на час, с 09:00 до 18:00 каждый день</p>
+      <div>
+        <h1>Переговорная</h1>
+        <p class="page-header__subtitle">Бронирование на час, с 09:00 до 18:00 каждый день</p>
+      </div>
+      <SelectButton
+        v-model="view"
+        :options="VIEW_OPTIONS"
+        option-label="label"
+        option-value="value"
+        :allow-empty="false"
+        aria-label="Вид расписания"
+        class="segmented view-switch"
+      />
     </header>
 
     <!-- First load: skeleton, then either the schedule or a full error. -->
     <section v-if="isFirstLoad && loadError === null" class="schedule" aria-busy="true">
       <span class="visually-hidden" role="status">Загружаем расписание…</span>
-      <Skeleton width="28rem" height="3.75rem" class="skeleton-strip" />
+      <Skeleton width="34rem" height="3.75rem" border-radius="12px" class="skeleton-strip" />
       <div class="skeleton-list">
-        <Skeleton v-for="n in 9" :key="n" height="3.75rem" border-radius="0" />
+        <Skeleton v-for="n in 9" :key="n" height="3.5rem" border-radius="0" />
       </div>
     </section>
 
@@ -139,7 +177,7 @@ function onCancelled(slot: Slot, result: CancelResult): void {
     </section>
 
     <section v-else class="schedule" aria-labelledby="schedule-heading">
-      <div class="schedule-toolbar">
+      <div v-if="view === 'list'" class="schedule-toolbar">
         <DateStrip
           v-model="selectedDate"
           :strip-dates="stripDates"
@@ -149,7 +187,7 @@ function onCancelled(slot: Slot, result: CancelResult): void {
       </div>
 
       <div class="schedule-heading">
-        <h2 id="schedule-heading" tabindex="-1">{{ selectedDateLabel }}</h2>
+        <h2 id="schedule-heading" tabindex="-1">{{ headingLabel }}</h2>
         <div class="schedule-heading__meta">
           <span class="timezone-note">Время: {{ timezoneLabel }}</span>
           <Button
@@ -171,16 +209,33 @@ function onCancelled(slot: Slot, result: CancelResult): void {
         </div>
       </Message>
 
-      <SlotList
-        v-if="slotsForSelectedDate.length > 0"
-        :slots="slotsForSelectedDate"
-        :timezone="timezone"
-        @book="openBooking"
-        @cancel="openCancel"
-      />
-      <p v-else class="empty-state">
-        {{ selectedDate ? 'На эту дату слотов нет.' : 'Расписание пустое. Заполните базу командой php artisan db:seed.' }}
-      </p>
+      <template v-if="view === 'list'">
+        <SlotList
+          v-if="slotsForSelectedDate.length > 0"
+          :slots="slotsForSelectedDate"
+          :timezone="timezone"
+          @book="openBooking"
+          @cancel="openCancel"
+        />
+        <p v-else-if="selectedDate" class="empty-state">На эту дату слотов нет</p>
+        <p v-else class="empty-state">Расписание пустое. Заполните базу командой php artisan db:seed.</p>
+      </template>
+
+      <template v-else>
+        <div v-if="stripDates.length > 0" class="calendar">
+          <p class="calendar__hint">Нажмите на свободный час, чтобы забронировать, на занятый — чтобы отменить</p>
+          <WeekGrid
+            :days="stripDates"
+            :slots="slots"
+            :timezone="timezone"
+            :today="meta?.today ?? ''"
+            @book="openBooking"
+            @cancel="openCancel"
+            @open-day="openDayInList"
+          />
+        </div>
+        <p v-else class="empty-state">На эту неделю слотов нет. Заполните базу командой php artisan db:seed.</p>
+      </template>
     </section>
   </main>
 
@@ -210,25 +265,38 @@ function onCancelled(slot: Slot, result: CancelResult): void {
 }
 
 .page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 
 .page-header h1 {
   font-size: 30px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  line-height: 36px;
+  font-weight: 600;
 }
 
 .page-header__subtitle {
   margin-top: var(--space-1);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
+.view-switch :deep(.p-togglebutton) {
+  padding: 6px var(--space-3);
+}
+
+/* 24 between the date strip and the heading, 16 from the heading down. */
 .schedule {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.schedule-toolbar {
+  margin-bottom: var(--space-2);
 }
 
 .schedule-heading {
@@ -237,12 +305,11 @@ function onCancelled(slot: Slot, result: CancelResult): void {
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
-  margin-top: var(--space-2);
 }
 
 .schedule-heading h2 {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .schedule-heading h2::first-letter {
@@ -253,6 +320,18 @@ function onCancelled(slot: Slot, result: CancelResult): void {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* The hint belongs to the grid, so it sits closer to it than to the heading. */
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.calendar__hint {
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .timezone-note {
@@ -275,7 +354,7 @@ function onCancelled(slot: Slot, result: CancelResult): void {
   color: var(--text-muted);
   background: var(--panel-bg);
   border: 1px solid var(--divider);
-  border-radius: var(--radius);
+  border-radius: var(--radius-panel);
 }
 
 .skeleton-strip {
@@ -286,7 +365,7 @@ function onCancelled(slot: Slot, result: CancelResult): void {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-panel);
   overflow: hidden;
 }
 

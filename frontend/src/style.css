@@ -1,15 +1,34 @@
+/*
+ * Design tokens. Every color, radius and duration on the page comes from here.
+ * World: a paper wall planner by the meeting room door — off-white paper,
+ * charcoal ink, one blue pen for actions and selection, an ochre highlighter
+ * for taken hours.
+ */
 :root {
+  /* Neutral ramp, slightly warm. */
   --page-bg: #f6f4f0;
   --panel-bg: #ffffff;
+  --surface-raised: #f1eee8;
   --text: #24221f;
-  --text-muted: #6a645b;
-  --divider: #e6e1d9;
-  --accent: #3e5c87;
-  --accent-soft: #e8eef6;
+  --text-secondary: #5a544b;
+  --text-muted: #736c62;
+  --divider: rgba(36, 34, 31, 0.1);
 
-  --status-free: #2f6f4f;
-  --status-booked: #8a5a14;
-  --status-past: #8a847a;
+  /* The one accent: primary action, selection, focus. */
+  --accent: #3e5c87;
+  --accent-hover: #344c6f;
+  --accent-soft: #eaeff6;
+
+  /* Slot statuses. Color always comes with a label and a mark shape. */
+  --free-mark: #2f7a54;
+  --booked-ink: #7d5212;
+  --booked-fill: #f5e7c9;
+  --booked-fill-hover: #eedbb2;
+  --booked-row: #fbf6ec;
+  /* Past hours: a grey band, so they never read like free white cells. */
+  --past-fill: #f2efea;
+
+  --danger: #b3261e;
 
   /* One spacing scale for the whole page. */
   --space-1: 4px;
@@ -20,7 +39,11 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --radius: 8px;
+  --radius-panel: 12px;
+  --radius-control: 8px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
 
   font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 15px;
@@ -71,14 +94,84 @@ p {
   outline-offset: 2px;
 }
 
+/* Headings that receive focus programmatically do not need a ring. */
+[tabindex='-1']:focus {
+  outline: none;
+}
+
+/*
+ * Status marks, the same everywhere a slot appears:
+ * ring = free, filled dot = booked, dash = past.
+ */
+.status-mark {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-mark--free {
+  border: 2px solid var(--free-mark);
+}
+
+.status-mark--booked {
+  background: var(--booked-ink);
+}
+
+.status-mark--past {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--text-muted);
+}
+
+/*
+ * Segmented control: PrimeVue SelectButton restyled as one panel with
+ * separate rounded options. Used for the date strip and the view switch.
+ * Selectors carry .p-component to outrank PrimeVue's own
+ * `.p-selectbutton .p-togglebutton:first-child` rules, which load later.
+ */
+.segmented.p-selectbutton {
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--panel-bg);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-panel);
+}
+
+.segmented.p-selectbutton > .p-togglebutton.p-component {
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.segmented.p-selectbutton > .p-togglebutton.p-component:not(.p-togglebutton-checked):hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.segmented.p-selectbutton > .p-togglebutton.p-togglebutton-checked {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* Aura draws a white "pill" inside the checked option; the option itself is colored instead. */
+.segmented.p-selectbutton .p-togglebutton-content {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
     animation: none !important;
   }
-}
-
-/* Headings that receive focus programmatically do not need a ring. */
-[tabindex='-1']:focus {
-  outline: none;
 }

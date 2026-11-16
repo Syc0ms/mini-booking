@@ -40,6 +40,8 @@ class BookingTest extends TestCase
             'slot_id' => $slot->id,
             'customer_name' => 'Анна Петрова',
             'customer_email' => 'anna@example.com',
+            // 12:30 Moscow is 09:30 UTC: timestamps are stored in UTC as well.
+            'created_at' => '2026-03-10 09:30:00',
         ]);
     }
 
@@ -99,6 +101,7 @@ class BookingTest extends TestCase
 
         $this->deleteJson("/api/bookings/{$booking->id}")->assertNoContent();
         $this->deleteJson("/api/bookings/{$booking->id}")->assertNotFound();
+        $this->deleteJson('/api/bookings/99999999999999999999')->assertNotFound();
 
         $this->postJson('/api/bookings', [
             'slot_id' => $slot->id,

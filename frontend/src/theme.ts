@@ -5,13 +5,14 @@ import Aura from '@primeuix/themes/aura'
 // buttons, inputs and dialogs match the page instead of the stock look.
 export const RoomPreset = definePreset(Aura, {
   primitive: {
+    // Controls 8, dialogs and panels 12 (matches --radius-* in style.css).
     borderRadius: {
       none: '0',
-      xs: '2px',
-      sm: '4px',
-      md: '6px',
-      lg: '8px',
-      xl: '10px',
+      xs: '4px',
+      sm: '6px',
+      md: '8px',
+      lg: '12px',
+      xl: '12px',
     },
   },
   semantic: {
@@ -68,22 +69,47 @@ export const RoomPreset = definePreset(Aura, {
     },
   },
   components: {
+    // A deep red instead of Aura's bright red: the destructive button should
+    // be clear, not the loudest thing on the page.
+    button: {
+      colorScheme: {
+        light: {
+          root: {
+            danger: {
+              background: '#b3261e',
+              hoverBackground: '#9c2019',
+              activeBackground: '#861b15',
+              borderColor: '#b3261e',
+              hoverBorderColor: '#9c2019',
+              activeBorderColor: '#861b15',
+              color: '#ffffff',
+              hoverColor: '#ffffff',
+              activeColor: '#ffffff',
+              focusRing: {
+                color: '#b3261e',
+                shadow: 'none',
+              },
+            },
+          },
+        },
+      },
+    },
     dialog: {
       root: {
         borderRadius: '{border.radius.lg}',
       },
       header: {
-        padding: '1.25rem 1.5rem 0.5rem',
+        padding: '20px 24px 8px',
       },
       content: {
-        padding: '0 1.5rem 1.25rem',
+        padding: '0 24px 24px',
       },
       footer: {
-        padding: '0 1.5rem 1.5rem',
+        padding: '0 24px 24px',
       },
       title: {
-        fontSize: '1.125rem',
-        fontWeight: '600',
+        fontSize: '18px',
+        fontWeight: '500',
       },
     },
   },

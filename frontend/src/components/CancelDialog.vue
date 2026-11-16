@@ -5,7 +5,7 @@ import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import type { Slot } from '../api/bookingApi'
 import type { CancelResult } from '../composables/useBookingActions'
-import { formatDateLong, formatTimeRange } from '../utils/datetime'
+import { formatSlotLabel } from '../utils/slot'
 
 const props = defineProps<{
   slot: Slot | null
@@ -24,13 +24,7 @@ const isSubmitting = ref(false)
 const errorText = ref<string | null>(null)
 const canRetry = ref(true)
 
-const slotLabel = computed(() => {
-  if (props.slot === null) {
-    return ''
-  }
-  const time = formatTimeRange(props.slot.starts_at, props.slot.ends_at, props.timezone)
-  return `${formatDateLong(props.slot.date)}, ${time}`
-})
+const slotLabel = computed(() => (props.slot === null ? '' : formatSlotLabel(props.slot, props.timezone)))
 
 watch(visible, (isOpen) => {
   if (isOpen) {
@@ -74,8 +68,13 @@ async function confirm(): Promise<void> {
     @after-hide="emit('after-hide')"
   >
     <div class="cancel-body">
-      <p class="cancel-body__slot tabular">{{ slotLabel }}</p>
-      <p class="cancel-body__hint">Слот снова станет свободным для бронирования.</p>
+      <div class="cancel-body__summary">
+        <p class="cancel-body__slot tabular">
+          <span class="status-mark status-mark--booked" aria-hidden="true"></span>
+          <span class="cancel-body__slot-text">{{ slotLabel }}</span>
+        </p>
+        <p class="cancel-body__hint">Час снова станет свободным для бронирования</p>
+      </div>
 
       <Message v-if="errorText" severity="error" size="small">{{ errorText }}</Message>
 
@@ -105,19 +104,24 @@ async function confirm(): Promise<void> {
 .cancel-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
+}
+
+.cancel-body__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .cancel-body__slot {
-  font-weight: 600;
-}
-
-.cancel-body__slot::first-letter {
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
 }
 
 .cancel-body__hint {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .cancel-body__actions {

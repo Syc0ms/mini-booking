@@ -48,6 +48,17 @@ export function formatDateWithYear(dateKey: string): string {
   return formatDateKey(dateKey, { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+/** "16–22 ноября", or "28 ноября – 4 декабря" when the range spans two months. */
+export function formatDateRange(firstDateKey: string, lastDateKey: string): string {
+  const sameMonth = firstDateKey.slice(0, 7) === lastDateKey.slice(0, 7)
+  const last = formatDateKey(lastDateKey, { day: 'numeric', month: 'long' })
+
+  if (sameMonth) {
+    return `${formatDayOfMonth(firstDateKey)}–${last}`
+  }
+  return `${formatDateKey(firstDateKey, { day: 'numeric', month: 'long' })} – ${last}`
+}
+
 /** "2026-11-18" plus N days, as a calendar-date calculation. */
 export function addDaysToDateKey(dateKey: string, days: number): string {
   const date = dateKeyToUtcNoon(dateKey)
@@ -55,9 +66,23 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-/** Human name of a timezone offset, e.g. "Europe/Moscow, UTC+3". */
+function timeZoneNamePart(locale: string, timeZone: string, style: 'longGeneric' | 'shortOffset'): string {
+  const parts = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: style }).formatToParts(new Date())
+  return parts.find((part) => part.type === 'timeZoneName')?.value ?? ''
+}
+
+/** "Москва, UTC+3" for people; falls back to the IANA ID when Intl has no Russian name. */
 export function describeTimezone(timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).formatToParts(new Date())
-  const offset = parts.find((part) => part.type === 'timeZoneName')?.value ?? ''
-  return `${timeZone}, ${offset.replace('GMT', 'UTC')}`
+  const offset = timeZoneNamePart('en-US', timeZone, 'shortOffset').replace('GMT', 'UTC')
+
+  // 'longGeneric' gives "Москва, стандартное время" in Chrome and Node alike
+  // ('shortGeneric' falls back to English in Chrome). Keep the place only.
+  const longName = timeZoneNamePart(LOCALE, timeZone, 'longGeneric')
+  const placeName = longName.split(',')[0].trim()
+
+  // Without a name Intl returns an offset like "GMT+03:00".
+  const hasPlaceName = placeName !== '' && !placeName.startsWith('GMT')
+  const place = hasPlaceName ? placeName : timeZone
+
+  return `${place}, ${offset}`
 }
